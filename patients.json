@@ -118,15 +118,5 @@
         "weight": 92,
         "bmi": 30.41,
         "verdict": "Obese"
-    },
-    "P020": {
-        "name": "PPPt Doe",
-        "city": "Old York",
-        "age": 50,
-        "gender": "Male",
-        "height": 1.55,
-        "weight": 70.0,
-        "bmi": 29.14,
-        "verdict": "Overweight"
     }
 }

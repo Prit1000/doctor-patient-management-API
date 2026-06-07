@@ -1,7 +1,7 @@
 from fastapi import FastAPI , Path , HTTPException , Query
 from pydantic import BaseModel , Field , computed_field
 from fastapi.responses import JSONResponse
-from typing import Annotated , Literal
+from typing import Annotated , Literal ,Optional
 import json
 
 app = FastAPI()
@@ -34,7 +34,15 @@ class Patient(BaseModel):
         else:
             return "Obese"
 
-
+class patient_update(BaseModel):
+    name: Annotated[Optional[str], Field(default=None,description="Name of the patient", example="John Doe")]
+    city: Annotated[Optional[str], Field(default=None,description="City of the patient", example="New York")]
+    age: Annotated[Optional[int],Field(default=None,gt=0,lt=120,description="Age of the patient", example=30)]
+    gender: Annotated[Optional[Literal["Male", "Female", "Other"]], Field(default=None,description="Gender of the patient", example="Male")]
+    height: Annotated[Optional[float], Field(default=None,gt=0,description="Height of the patient in m", example=1.755)]
+    weight: Annotated[Optional[float], Field(default=None,gt=0,description="Weight of the patient in kg", example=70.0)]
+    
+    
 def load_patients():
     with open("patients.json", "r") as file:
         data =  json.load(file)
@@ -92,3 +100,44 @@ def create_patient(patient: Patient):
     patients[patient.id] = patient.model_dump(exclude=["id"])
     save_patients(patients)
     return JSONResponse(status_code=201,content={"message": "Patient created successfully"})
+
+
+@app.put("/edit/{patient_id}")
+def edit_patient(patient_id: str = Path(..., description="The ID of the patient to update", example="P001"), patient_update: patient_update = None):
+    patients = load_patients()
+    if patient_id not in patients:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    
+    patient_data = patients[patient_id]
+    update_data = patient_update.model_dump(exclude_unset=True) 
+    # this will give us only the fields which are sent by client for update and exclude the fields which are not sent by client.
+    
+    for key, value in update_data.items():
+        patient_data[key] = value
+    
+    # patient_data -> pydantic object -> we need to convert this patient_data to Patient object to get the computed fields bmi and verdict updated according to the new height and weight. -> then convert this updated Patient object back to dictionary and save it to patients.json file.
+    
+    patient_data["id"] = patient_id
+    updated_patient = Patient(**patient_data)
+    updated_patient_dict = updated_patient.model_dump(exclude=["id"])
+    
+    patients[patient_id] = updated_patient_dict
+    save_patients(patients)
+
+    return JSONResponse(status_code=200, content={"message": "Patient updated successfully"})   
+
+
+@app.delete("/delete/{patient_id}")
+def delete_patient(patient_id: str = Path(..., description="The ID of the patient to delete", example="P001")):
+    patients = load_patients()
+    if patient_id not in patients:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    del patients[patient_id]
+    save_patients(patients)
+    return JSONResponse(status_code=200, content={"message": "Patient deleted successfully"})
+
+
+
+    
+    
+    
